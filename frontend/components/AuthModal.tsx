@@ -2,7 +2,17 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { X, Mail, Lock, User as UserIcon, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  X,
+  Mail,
+  Lock,
+  User as UserIcon,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 interface AuthModalProps {
   onClose: () => void;
@@ -17,6 +27,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +225,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
               <div className="relative">
                 <Lock className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#5f687d]" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   minLength={6}
                   value={password}
@@ -222,6 +233,15 @@ export function AuthModal({ onClose }: AuthModalProps) {
                   placeholder="••••••••"
                   className="w-full rounded-lg border border-[#22283a] bg-[#131722] py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 focus:outline-none"
                 />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-slate-700 focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
