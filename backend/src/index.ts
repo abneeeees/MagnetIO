@@ -3,7 +3,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { fetchMetadata } from "./services/torrent-metadata";
-import { resolveTorrent, pickFile, streamFile } from "./services/torrent-engine";
+import {
+  resolveTorrent,
+  pickFile,
+  streamFile,
+  MAX_STREAM_FILE_BYTES,
+} from "./services/torrent-engine";
 import { userRoutes } from "./routes/user-routes";
 
 export const app = new Hono();
@@ -62,7 +67,18 @@ app.get("/stream/:infoHash", async (c) => {
   try {
     const torrent = await resolveTorrent(torrentTarget);
     const file = pickFile(torrent, fileIdx != null ? Number(fileIdx) : undefined);
-    return streamFile(file, range);
+
+    // Guard against filling a small disk with a single huge file.
+    if (MAX_STREAM_FILE_BYTES > 0 && file.length > MAX_STREAM_FILE_BYTES) {
+      return c.json(
+        {
+          error: `File is too large to stream (${file.length} bytes, limit ${MAX_STREAM_FILE_BYTES}).`,
+        },
+        413,
+      );
+    }
+
+    return streamFile(torrent, file, range, c.req.raw.signal);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const status = message.includes("Timeout") ? 408 : 500;
