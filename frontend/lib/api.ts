@@ -1,7 +1,6 @@
 import { MediaItem, SeriesDetails, SeriesSeason, TorrentStream } from "@/types";
 
-export const NEXT_PUBLIC_BACKEND_URL =
-  process.env.NEXT_PUBLIC_NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
 
 const CINEMETA_TOP_MOVIES = "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json";
 const CINEMETA_TOP_SERIES = "https://cinemeta-catalogs.strem.io/top/catalog/series/top.json";
@@ -108,7 +107,7 @@ export async function fetchStreams(
   const mediaId =
     type === "series" && season != null && episode != null ? `${id}:${season}:${episode}` : id;
 
-  const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/metadata/${type}/${mediaId}`);
+  const res = await fetch(`${BACKEND_URL}/metadata/${type}/${mediaId}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Failed to fetch streams (${res.status})`);
@@ -130,12 +129,12 @@ export function buildStreamUrl(infoHash: string, _magnet?: string, fileIdx?: num
   }
 
   const query = params.toString();
-  return `${NEXT_PUBLIC_BACKEND_URL}/stream/${hash}${query ? `?${query}` : ""}`;
+  return `${BACKEND_URL}/stream/${hash}${query ? `?${query}` : ""}`;
 }
 
 // Authenticated User API calls
 export async function fetchWatchHistory(token: string) {
-  const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/user/history`, {
+  const res = await fetch(`${BACKEND_URL}/user/history`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -159,7 +158,7 @@ export async function saveWatchProgress(
     posterUrl?: string | null;
   },
 ) {
-  const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/user/history`, {
+  const res = await fetch(`${BACKEND_URL}/user/history`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -177,7 +176,7 @@ async function readApiError(res: Response, fallback: string): Promise<string> {
 }
 
 export async function fetchWatchlist(token: string) {
-  const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/user/watchlist`, {
+  const res = await fetch(`${BACKEND_URL}/user/watchlist`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -197,7 +196,7 @@ export async function addToWatchlist(
     releaseInfo?: string | null;
   },
 ) {
-  const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/user/watchlist`, {
+  const res = await fetch(`${BACKEND_URL}/user/watchlist`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -210,15 +209,12 @@ export async function addToWatchlist(
 }
 
 export async function removeFromWatchlist(token: string, mediaId: string) {
-  const res = await fetch(
-    `${NEXT_PUBLIC_BACKEND_URL}/user/watchlist/${encodeURIComponent(mediaId)}`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  const res = await fetch(`${BACKEND_URL}/user/watchlist/${encodeURIComponent(mediaId)}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
   if (!res.ok) throw new Error(await readApiError(res, "Failed to remove from watchlist"));
   return res.json();
 }
