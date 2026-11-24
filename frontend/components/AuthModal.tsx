@@ -90,23 +90,23 @@ export function AuthModal({ onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-[#1f2537] bg-[#0f121a] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05060a]/70 p-4 backdrop-blur-2xl">
+      <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-white/10 bg-[#0f121a]/80 shadow-[0_24px_80px_rgba(0,0,0,.65),inset_0_1px_0_rgba(255,255,255,.04)] backdrop-blur-3xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#1b202e] bg-[#141824] px-6 py-4">
+        <div className="flex items-center justify-between border-b border-white/8 bg-white/4 px-6 py-4 backdrop-blur-2xl">
           <h2 className="text-sm font-semibold text-white">
             {mode === "signin" ? "Sign In to Magnetio" : "Create an Account"}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-[#737c92] transition-colors hover:bg-[#1f2639] hover:text-white"
+            className="rounded-lg border border-transparent p-1 text-[#737c92] backdrop-blur-xl transition-colors hover:border-white/8 hover:bg-white/5 hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-[#1b202e] bg-[#111520]">
+        <div className="flex border-b border-white/8 bg-white/3 backdrop-blur-xl">
           <button
             onClick={() => {
               setMode("signin");
@@ -114,8 +114,8 @@ export function AuthModal({ onClose }: AuthModalProps) {
             }}
             className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
               mode === "signin"
-                ? "border-b-2 border-red-500 bg-[#151a28] text-white"
-                : "text-[#7a849b] hover:text-white"
+                ? "border-b-2 border-red-500 bg-white/7 text-white"
+                : "text-[#7a849b] hover:bg-white/3 hover:text-white"
             }`}
           >
             Sign In
@@ -127,8 +127,8 @@ export function AuthModal({ onClose }: AuthModalProps) {
             }}
             className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
               mode === "signup"
-                ? "border-b-2 border-red-500 bg-[#151a28] text-white"
-                : "text-[#7a849b] hover:text-white"
+                ? "border-b-2 border-red-500 bg-white/7 text-white"
+                : "text-[#7a849b] hover:bg-white/3 hover:text-white"
             }`}
           >
             Sign Up
@@ -142,7 +142,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#232a3d] bg-[#141824] py-2.5 text-xs font-medium text-white transition-colors hover:border-[#303950] hover:bg-[#1a2030] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/5 py-2.5 text-xs font-medium text-white backdrop-blur-xl transition-colors hover:border-white/15 hover:bg-white/8 disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -169,7 +169,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             type="button"
             onClick={handleGithubSignIn}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#232a3d] bg-[#141824] py-2.5 text-xs font-medium text-white transition-colors hover:border-[#303950] hover:bg-[#1a2030] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/5 py-2.5 text-xs font-medium text-white backdrop-blur-xl transition-colors hover:border-white/15 hover:bg-white/8 disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -182,7 +182,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
 
           <div className="relative flex items-center justify-center">
             <div className="w-full border-t border-[#1b202e]" />
-            <span className="absolute bg-[#0f121a] px-2 text-[10px] tracking-wider text-[#5f687d] uppercase">
+            <span className="absolute bg-[#0f121a]/80 px-2 text-[10px] tracking-wider text-[#5f687d] uppercase backdrop-blur-xl">
               or with email
             </span>
           </div>
@@ -199,7 +199,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
-                    className="w-full rounded-lg border border-[#22283a] bg-[#131722] py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 focus:outline-none"
+                    className="w-full rounded-xl border border-white/8 bg-white/5 py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] backdrop-blur-xl focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:outline-none"
                   />
                 </div>
               </div>
@@ -215,7 +215,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full rounded-lg border border-[#22283a] bg-[#131722] py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 focus:outline-none"
+                  className="w-full rounded-xl border border-white/8 bg-white/5 py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] backdrop-blur-xl focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:outline-none"
                 />
               </div>
             </div>
@@ -231,7 +231,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-lg border border-[#22283a] bg-[#131722] py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] focus:border-red-500/60 focus:ring-1 focus:ring-red-500/60 focus:outline-none"
+                  className="w-full rounded-xl border border-white/8 bg-white/5 py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] backdrop-blur-xl focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:outline-none"
                 />
 
                 <button
@@ -247,14 +247,14 @@ export function AuthModal({ onClose }: AuthModalProps) {
 
             {error && (
               <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-400">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
               <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-400">
-                <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{successMsg}</span>
               </div>
             )}
@@ -262,7 +262,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-600/85 py-2.5 text-xs font-semibold text-white shadow-[0_8px_24px_rgba(220,38,38,.14)] backdrop-blur-xl transition-colors hover:bg-red-500 disabled:opacity-50"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {mode === "signin" ? "Sign In" : "Create Account"}
