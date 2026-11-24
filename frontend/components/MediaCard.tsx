@@ -25,10 +25,10 @@ export function MediaCard({
   return (
     <div
       onClick={() => onSelect(item)}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[#1b1f2b] bg-[#12151e] transition-all duration-200 hover:-translate-y-1 hover:border-[#2e374d] hover:shadow-lg hover:shadow-black/60"
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-white/8 bg-white/5 shadow-[0_12px_32px_rgba(0,0,0,.18),inset_0_1px_0_rgba(255,255,255,.025)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-white/15 hover:bg-white/7 hover:shadow-lg hover:shadow-black/50"
     >
       {/* Poster Image */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden bg-[#161a26]">
+      <div className="relative aspect-2/3 w-full overflow-hidden bg-white/3">
         {item.poster && !imgError ? (
           <Image
             src={item.poster}
@@ -81,7 +81,7 @@ export function MediaCard({
       </div>
 
       {/* Title & Metadata */}
-      <div className="flex flex-1 flex-col justify-between p-2.5">
+      <div className="flex flex-1 flex-col justify-between border-t border-white/5 bg-white/3 p-2.5 backdrop-blur-xl">
         <h3 className="line-clamp-1 text-xs font-semibold text-[#e2e5eb] transition-colors group-hover:text-red-400">
           {item.name}
         </h3>

@@ -200,7 +200,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b0c10] text-[#e6e8ec]">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#0b0c10] text-[#e6e8ec] before:pointer-events-none before:absolute before:top-24 before:-left-24 before:h-72 before:w-72 before:rounded-full before:bg-red-600/5 before:blur-[100px] after:pointer-events-none after:absolute after:right-0 after:bottom-32 after:h-96 after:w-96 after:rounded-full after:bg-blue-500/4 after:blur-[120px]">
       {/* Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -211,7 +211,7 @@ export default function HomePage() {
       />
 
       {/* Main Content Area */}
-      <main className="w-full flex-1 px-3 py-6 sm:px-4 lg:px-5">
+      <main className="relative z-10 w-full flex-1 px-3 pt-4 pb-28 sm:px-4 lg:px-5 lg:pt-5">
         {/* Content Grid / State */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-28 text-[#6e778d]">
@@ -221,7 +221,7 @@ export default function HomePage() {
         ) : activeTab === "history" ? (
           // Watch History View
           historyItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#202739] py-24 text-center">
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/3 py-24 text-center backdrop-blur-xl">
               <History className="mb-3 h-8 w-8 text-[#515a6e]" />
               <p className="text-sm font-medium text-[#8d97ac]">No watch history yet</p>
               <p className="mt-1 text-xs text-[#5f687e]">
@@ -229,7 +229,7 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {historyItems.map((hist) => {
                 const progressPct =
                   hist.duration > 0 ? (hist.currentTime / hist.duration) * 100 : 0;
@@ -244,11 +244,11 @@ export default function HomePage() {
                         poster: hist.posterUrl,
                       })
                     }
-                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-[#1c2232] bg-[#12151e] p-3 transition-all hover:border-red-500/40 hover:bg-[#181d2c]"
+                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-white/8 bg-white/5 p-3 shadow-[0_12px_32px_rgba(0,0,0,.16)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/7"
                   >
                     <div className="flex gap-3">
                       {hist.posterUrl && (
-                        <div className="relative h-24 w-16 flex-shrink-0 overflow-hidden rounded bg-[#161a26]">
+                        <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded bg-[#161a26]">
                           <Image
                             src={hist.posterUrl}
                             alt={hist.title}
@@ -296,7 +296,7 @@ export default function HomePage() {
             </div>
           )
         ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#202739] py-24 text-center">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/3 py-24 text-center backdrop-blur-xl">
             <Sparkles className="mb-3 h-8 w-8 text-[#515a6e]" />
             <p className="text-sm font-medium text-[#8d97ac]">
               {activeTab === "watchlist" ? "Your watchlist is empty" : "No results found"}
@@ -308,7 +308,7 @@ export default function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] sm:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-8">
             {items.map((item) => (
               <MediaCard
                 key={item.id}

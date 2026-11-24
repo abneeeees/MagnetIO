@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { TorrentStream } from "@/types";
 import { buildStreamUrl, saveWatchProgress } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { X, ExternalLink, Copy, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
 
 interface MediaContextInfo {
   mediaId: string;
@@ -26,7 +26,6 @@ interface VideoPlayerModalProps {
 export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPlayerModalProps) {
   const { token } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(true);
 
@@ -72,12 +71,6 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const handleCopyMagnet = () => {
-    navigator.clipboard.writeText(stream.magnet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleRetry = () => {
     setError(null);
     setIsBuffering(true);
@@ -96,44 +89,6 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
           <h1 className="max-w-md truncate text-sm font-semibold text-white sm:max-w-xl">
             {title}
           </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyMagnet}
-            className="flex items-center gap-1.5 rounded-lg border border-[#22293d] bg-[#141824] px-2.5 py-1.5 text-xs text-[#8d97ac] transition-colors hover:border-[#323c56] hover:text-white"
-            title="Copy Magnet Link"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Copy Magnet</span>
-              </>
-            )}
-          </button>
-
-          <a
-            href={streamUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-[#22293d] bg-[#141824] px-2.5 py-1.5 text-xs text-[#8d97ac] transition-colors hover:border-[#323c56] hover:text-white"
-            title="Open stream in new tab / VLC"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Raw Stream</span>
-          </a>
-
-          <button
-            onClick={onClose}
-            className="rounded-lg bg-[#1a1f2e] p-1.5 text-[#8d97ac] transition-colors hover:bg-red-600 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
       </div>
 

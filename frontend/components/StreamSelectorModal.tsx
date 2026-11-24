@@ -198,17 +198,17 @@ export function StreamSelectorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 backdrop-blur-sm sm:p-4">
-      <div className="relative flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-[#1f2537] bg-[#0f121a] shadow-2xl sm:max-h-[90vh] sm:rounded-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05060a]/70 p-2 backdrop-blur-2xl sm:p-4">
+      <div className="relative flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f121a]/80 shadow-[0_24px_80px_rgba(0,0,0,.65),inset_0_1px_0_rgba(255,255,255,.04)] backdrop-blur-3xl sm:max-h-[90vh]">
         {/* Header */}
-        <div className="relative flex items-center justify-between gap-2 border-b border-[#1b202e] bg-[#141824] px-3 py-3 sm:px-6 sm:py-4">
+        <div className="relative flex items-center justify-between gap-2 border-b border-white/8 bg-white/4 px-3 py-3 backdrop-blur-2xl sm:px-6 sm:py-4">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <h2 className="line-clamp-1 min-w-0 text-sm font-semibold text-white sm:text-base">
               {item.name} {item.releaseInfo ? `(${item.releaseInfo})` : ""}
             </h2>
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
               onClick={toggleWatchlist}
               disabled={watchlistLoading}
@@ -216,7 +216,7 @@ export function StreamSelectorModal({
               className={`flex items-center gap-1.5 rounded-lg border p-2 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 ${
                 inWatchlist
                   ? "border-red-500/40 bg-red-500/10 text-red-400"
-                  : "border-[#252c40] bg-[#181d2c] text-[#8e98ae] hover:text-white"
+                  : "border-white/8 bg-white/5 text-[#8e98ae] backdrop-blur-xl hover:border-white/15 hover:bg-white/8 hover:text-white"
               }`}
             >
               <Bookmark className={`h-3.5 w-3.5 ${inWatchlist ? "fill-current" : ""}`} />
@@ -226,7 +226,7 @@ export function StreamSelectorModal({
             <button
               onClick={onClose}
               aria-label="Close stream selector"
-              className="rounded-lg p-1.5 text-[#737c92] transition-colors hover:bg-[#1f2639] hover:text-white"
+              className="rounded-lg border border-transparent p-1.5 text-[#737c92] backdrop-blur-xl transition-colors hover:border-white/8 hover:bg-white/5 hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
@@ -239,9 +239,9 @@ export function StreamSelectorModal({
         )}
 
         {/* Media Details Banner */}
-        <div className="flex gap-3 border-b border-[#1b202e] bg-[#0c0e14] p-3 sm:gap-4 sm:p-6">
+        <div className="flex gap-3 border-b border-white/8 bg-white/3 p-3 backdrop-blur-xl sm:gap-4 sm:p-6">
           {item.poster && (
-            <div className="relative h-32 w-[5.33rem] flex-shrink-0 overflow-hidden rounded-lg border border-[#232a3d] bg-[#161a26] sm:h-36 sm:w-24">
+            <div className="relative h-32 w-[5.33rem] shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,.25)] backdrop-blur-xl sm:h-36 sm:w-24">
               <Image src={item.poster} alt={item.name} fill className="object-cover" unoptimized />
             </div>
           )}
@@ -254,7 +254,7 @@ export function StreamSelectorModal({
                 {item.genre.map((g) => (
                   <span
                     key={g}
-                    className="rounded border border-[#20273a] bg-[#171c2a] px-2 py-0.5 text-[11px] text-[#7d869b]"
+                    className="rounded-lg border border-white/8 bg-white/5 px-2 py-0.5 text-[11px] text-[#8d97ab] backdrop-blur-xl"
                   >
                     {g}
                   </span>
@@ -266,7 +266,7 @@ export function StreamSelectorModal({
 
         {/* TV Series Season / Episode Selector */}
         {item.type === "series" && (
-          <div className="border-b border-[#1b202e] bg-[#121622] px-3 py-3 sm:px-6">
+          <div className="border-b border-white/8 bg-white/3 px-3 py-3 backdrop-blur-xl sm:px-6">
             {seriesLoading ? (
               <div className="flex items-center gap-2 text-xs text-[#737c92]">
                 <Loader2 className="h-4 w-4 animate-spin text-red-500" />
@@ -276,7 +276,7 @@ export function StreamSelectorModal({
               <div className="flex flex-col gap-2">
                 {seriesError && (
                   <div className="flex items-center gap-2 text-xs text-amber-400">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <AlertCircle className="h-4 w-4 shrink-0" />
                     <span>{seriesError} Using manual season and episode selection.</span>
                   </div>
                 )}
@@ -288,7 +288,7 @@ export function StreamSelectorModal({
                       id="season-select"
                       value={season}
                       onChange={handleSeasonChange}
-                      className="w-full cursor-pointer appearance-none rounded-lg border border-[#252c40] bg-[#171c2b] px-3 py-2.5 text-sm text-white transition outline-none hover:border-[#3b455e] focus:border-red-500"
+                      className="w-full cursor-pointer appearance-none rounded-lg border border-white/8 bg-white/5 px-3 py-2.5 text-sm text-white backdrop-blur-xl transition outline-none hover:border-white/15 hover:bg-white/7 focus:border-red-500/50"
                     >
                       {selectableSeasons.length > 0
                         ? selectableSeasons.map((s) => (
@@ -310,7 +310,7 @@ export function StreamSelectorModal({
                       id="episode-select"
                       value={episode}
                       onChange={(e) => setEpisode(Number(e.target.value))}
-                      className="w-full cursor-pointer appearance-none rounded-lg border border-[#252c40] bg-[#171c2b] px-3 py-2.5 text-sm text-white transition outline-none hover:border-[#3b455e] focus:border-red-500"
+                      className="w-full cursor-pointer appearance-none rounded-lg border border-white/8 bg-white/5 px-3 py-2.5 text-sm text-white backdrop-blur-xl transition outline-none hover:border-white/15 hover:bg-white/7 focus:border-red-500/50"
                     >
                       {episodesForSeason.length > 0
                         ? episodesForSeason.map((ep) => (
@@ -340,19 +340,17 @@ export function StreamSelectorModal({
           </div>
 
           {!loading && !error && streams.length > 0 && (
-            <div className="mb-4 grid grid-cols-4 overflow-hidden rounded-lg border border-[#252c40] bg-[#171c2b]">
+            <div className="mb-4 grid grid-cols-4 overflow-hidden rounded-xl border border-white/8 bg-white/5 p-1 backdrop-blur-xl">
               {qualityFilters.map((quality, index) => (
                 <button
                   key={quality}
                   type="button"
                   aria-pressed={selectedQuality === quality}
                   onClick={() => setSelectedQuality(selectedQuality === quality ? null : quality)}
-                  className={`border-[#252c40] px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
-                    index > 0 ? "border-l" : ""
-                  } ${
+                  className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
                     selectedQuality === quality
-                      ? "bg-red-500/10 text-red-400"
-                      : "text-[#8e98ae] hover:bg-[#1f2639] hover:text-white"
+                      ? "border border-red-400/10 bg-red-500/12 text-red-400 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]"
+                      : "border border-transparent text-[#8e98ae] hover:bg-white/5 hover:text-white"
                   }`}
                 >
                   {quality}
@@ -368,7 +366,7 @@ export function StreamSelectorModal({
             </div>
           ) : error ? (
             <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-400">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <AlertCircle className="h-5 w-5 shrink-0" />
               <p>{error}</p>
             </div>
           ) : streams.length === 0 ? (
@@ -395,7 +393,7 @@ export function StreamSelectorModal({
                         posterUrl: item.poster,
                       })
                     }
-                    className="group flex cursor-pointer flex-col items-stretch gap-3 rounded-lg border border-[#1c2232] bg-[#131722] p-3 transition-all hover:border-red-500/40 hover:bg-[#181d2c] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3.5"
+                    className="group flex cursor-pointer flex-col items-stretch gap-3 rounded-xl border border-white/8 bg-white/5 p-3 shadow-[0_8px_24px_rgba(0,0,0,.12),inset_0_1px_0_rgba(255,255,255,.025)] backdrop-blur-xl transition-all hover:-translate-y-px hover:border-white/15 hover:bg-white/7 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3.5"
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-xs font-medium text-[#dce0ea] transition-colors group-hover:text-red-400">
@@ -414,19 +412,19 @@ export function StreamSelectorModal({
                             {info.seeders} seeds
                           </span>
                         )}
-                        <span className="rounded bg-black/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-[#fffff] backdrop-blur-sm">
+                        <span className="rounded-md border border-white/6 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] font-medium text-[#8d97ab] backdrop-blur-sm">
                           {info.provider}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex w-full flex-shrink-0 items-center justify-end gap-2 sm:w-auto">
+                    <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
                       <button
                         type="button"
                         title="Copy magnet link"
                         aria-label="Copy magnet link"
                         onClick={(e) => handleCopyMagnet(stream.magnet, index, e)}
-                        className="rounded-lg p-2 text-[#60697f] transition-colors hover:bg-[#20273a] hover:text-white"
+                        className="rounded-lg border border-white/6 bg-white/3 p-2 text-[#7e889e] backdrop-blur-xl transition-colors hover:border-white/12 hover:bg-white/8 hover:text-white"
                       >
                         {copiedIndex === index ? (
                           <Check className="h-4 w-4 text-emerald-400" />
