@@ -1,25 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { MediaItem, SeriesDetails, TorrentStream, parseStreamTitle } from "@/types";
+import { parseStreamTitle, type MediaItem, type SeriesDetails, type TorrentStream } from "@/types";
 import { fetchStreams, getSeriesDetails } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import {
-  X,
-  Play,
-  Loader2,
-  Users,
-  HardDrive,
-  AlertCircle,
-  Copy,
-  Check,
-  Bookmark,
-} from "lucide-react";
+import { AlertCircle, Bookmark, Check, Copy, HardDrive, Loader2, Play, Users } from "lucide-react";
+import styles from "@/app/home.module.css";
 
 interface StreamSelectorModalProps {
   item: MediaItem;
-  onClose: () => void;
   inWatchlist?: boolean;
   onToggleWatchlist?: (item: MediaItem) => Promise<boolean>;
   onRequireAuth?: () => void;
@@ -37,10 +27,10 @@ interface StreamSelectorModalProps {
   ) => void;
 }
 
+const QUALITY_FILTERS = ["4K", "1080p", "720p", "HD"];
+
 function getSelectableSeasons(details: SeriesDetails | null) {
   if (!details) return [];
-
-  // Season 0 holds specials. Only include it when the series has no regular seasons.
   const regularSeasons = details.seasons.filter((season) => season.seasonNumber > 0);
   return regularSeasons.length > 0 ? regularSeasons : details.seasons;
 }
@@ -49,45 +39,66 @@ function getEpisodesForSeason(details: SeriesDetails | null, seasonNumber: numbe
   return details?.seasons.find((season) => season.seasonNumber === seasonNumber)?.episodes ?? [];
 }
 
+function getYear(releaseInfo?: string) {
+  if (!releaseInfo) return "";
+  return releaseInfo.match(/\b(19|20)\d{2}\b/)?.[0] ?? releaseInfo;
+}
+
 export function StreamSelectorModal({
   item,
-  onClose,
   inWatchlist = false,
   onToggleWatchlist,
   onRequireAuth,
   onPlayStream,
 }: StreamSelectorModalProps) {
   const { user } = useAuth();
-  const [season, setSeason] = useState<number>(1);
-  const [episode, setEpisode] = useState<number>(1);
+  const [season, setSeason] = useState(1);
+  const [episode, setEpisode] = useState(1);
   const [seriesDetails, setSeriesDetails] = useState<SeriesDetails | null>(null);
-  const [seriesLoading, setSeriesLoading] = useState<boolean>(item.type === "series");
+  const [seriesLoading, setSeriesLoading] = useState(item.type === "series");
   const [seriesError, setSeriesError] = useState<string | null>(null);
   const [streams, setStreams] = useState<TorrentStream[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
+  const isSeries = item.type === "series";
+  const effectiveSeriesDetails = isSeries ? seriesDetails : null;
+  const effectiveSeriesLoading = isSeries ? seriesLoading : false;
+  const effectiveSeriesError = isSeries ? seriesError : null;
   const [error, setError] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [selectedQuality, setSelectedQuality] = useState<string | null>("1080p");
-  const [watchlistLoading, setWatchlistLoading] = useState<boolean>(false);
+  const [selectedQuality, setSelectedQuality] = useState<string | null>("4K");
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
 
-  const qualityFilters = ["4K", "1080p", "720p", "HD"];
+  const backdrop = item.background || item.poster;
 
-  const filteredStreams = streams
-    .map((stream, index) => ({ stream, index, info: parseStreamTitle(stream.title) }))
-    .filter(({ info }) => {
-      if (Number(info.seeders) <= 50 || !Number.isFinite(Number(info.seeders))) return false;
-      if (!selectedQuality) return info.quality === "1080p";
-      if (selectedQuality === "HD") return info.quality === "HD" || info.quality === "480p";
-      return info.quality === selectedQuality;
-    });
+  const selectableSeasons = useMemo(
+    () => getSelectableSeasons(effectiveSeriesDetails),
+    [effectiveSeriesDetails],
+  );
+  const episodesForSeason = useMemo(
+    () => getEpisodesForSeason(effectiveSeriesDetails, season),
+    [effectiveSeriesDetails, season],
+  );
+
+  const filteredStreams = useMemo(
+    () =>
+      streams
+        .map((stream, index) => ({ stream, index, info: parseStreamTitle(stream.title) }))
+        .filter(({ info }) => {
+          const seedCount = Number(info.seeders);
+          if (!Number.isFinite(seedCount) || seedCount <= 50) return false;
+          if (!selectedQuality) return true;
+          return info.quality === selectedQuality;
+        }),
+    [streams, selectedQuality],
+  );
 
   useEffect(() => {
     if (item.type !== "series") return;
 
     let cancelled = false;
 
-    const loadSeriesDetails = async () => {
+    void (async () => {
       setSeriesDetails(null);
       setSeriesError(null);
       setSeriesLoading(true);
@@ -99,39 +110,35 @@ export function StreamSelectorModal({
         if (cancelled) return;
 
         setSeriesDetails(details);
-
         const firstSeason = getSelectableSeasons(details)[0];
         if (firstSeason) {
           setSeason(firstSeason.seasonNumber);
           setEpisode(firstSeason.episodes[0]?.episodeNumber ?? 1);
         }
-
-        setSeriesLoading(false);
-      } catch (err) {
+      } catch (loadError) {
         if (cancelled) return;
-
-        console.error("Failed to load series details:", err);
+        console.error("Failed to load series details:", loadError);
         setSeriesError(
-          err instanceof Error ? err.message : "Failed to load season and episode information.",
+          loadError instanceof Error
+            ? loadError.message
+            : "Could not load season and episode information.",
         );
-        setSeriesLoading(false);
+      } finally {
+        if (!cancelled) setSeriesLoading(false);
       }
-    };
-
-    void loadSeriesDetails();
+    })();
 
     return () => {
       cancelled = true;
     };
   }, [item.id, item.type]);
 
-  const waitingForSeriesInfo = item.type === "series" && seriesLoading;
+  const waitingForSeriesInfo = isSeries && effectiveSeriesLoading;
 
   useEffect(() => {
     if (waitingForSeriesInfo) return;
 
-    let isMounted = true;
-
+    let isCurrent = true;
     const loadStreams = async () => {
       setLoading(true);
       setError(null);
@@ -143,22 +150,20 @@ export function StreamSelectorModal({
           item.type === "series" ? season : undefined,
           item.type === "series" ? episode : undefined,
         );
-        if (!isMounted) return;
-
-        setStreams(data);
-        setLoading(false);
-      } catch (err) {
-        if (!isMounted) return;
-
-        setError(err instanceof Error ? err.message : "Failed to load streams from backend.");
-        setLoading(false);
+        if (isCurrent) setStreams(data);
+      } catch (loadError) {
+        if (!isCurrent) return;
+        setError(
+          loadError instanceof Error ? loadError.message : "Failed to fetch streams from backend.",
+        );
+      } finally {
+        if (isCurrent) setLoading(false);
       }
     };
 
     void loadStreams();
-
     return () => {
-      isMounted = false;
+      isCurrent = false;
     };
   }, [item.id, item.type, season, episode, waitingForSeriesInfo]);
 
@@ -168,28 +173,32 @@ export function StreamSelectorModal({
       return;
     }
     if (!onToggleWatchlist) return;
+
     setWatchlistError(null);
     setWatchlistLoading(true);
     try {
       const ok = await onToggleWatchlist(item);
-      if (!ok) setWatchlistError("Could not update watchlist.");
-    } catch (err) {
-      console.error("Watchlist toggle failed:", err);
-      setWatchlistError(err instanceof Error ? err.message : "Could not update watchlist.");
+      if (!ok) setWatchlistError("Could not update your watchlist.");
+    } catch (toggleError) {
+      console.error("Watchlist toggle failed:", toggleError);
+      setWatchlistError(
+        toggleError instanceof Error ? toggleError.message : "Could not update your watchlist.",
+      );
     } finally {
       setWatchlistLoading(false);
     }
   };
 
-  const handleCopyMagnet = (magnet: string, index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(magnet);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
+  const handleCopyMagnet = async (magnet: string, index: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(magnet);
+      setCopiedIndex(index);
+      window.setTimeout(() => setCopiedIndex(null), 1800);
+    } catch (copyError) {
+      console.error("Could not copy magnet link:", copyError);
+    }
   };
-
-  const selectableSeasons = getSelectableSeasons(seriesDetails);
-  const episodesForSeason = getEpisodesForSeason(seriesDetails, season);
 
   const handleSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextSeason = Number(event.target.value);
@@ -197,256 +206,198 @@ export function StreamSelectorModal({
     setEpisode(getEpisodesForSeason(seriesDetails, nextSeason)[0]?.episodeNumber ?? 1);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05060a]/70 p-2 backdrop-blur-2xl sm:p-4">
-      <div className="relative flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f121a]/80 shadow-[0_24px_80px_rgba(0,0,0,.65),inset_0_1px_0_rgba(255,255,255,.04)] backdrop-blur-3xl sm:max-h-[90vh]">
-        {/* Header */}
-        <div className="relative flex items-center justify-between gap-2 border-b border-white/8 bg-white/4 px-3 py-3 backdrop-blur-2xl sm:px-6 sm:py-4">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <h2 className="line-clamp-1 min-w-0 text-sm font-semibold text-white sm:text-base">
-              {item.name} {item.releaseInfo ? `(${item.releaseInfo})` : ""}
-            </h2>
-          </div>
+  const playStream = (stream: TorrentStream, info: ReturnType<typeof parseStreamTitle>) => {
+    onPlayStream(stream, `${item.name} (${info.quality})`, {
+      mediaId: item.id,
+      title: item.name,
+      mediaType: item.type,
+      seasonNum: item.type === "series" ? season : undefined,
+      episodeNum: item.type === "series" ? episode : undefined,
+      posterUrl: item.poster,
+    });
+  };
 
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+  return (
+    <div
+      className={styles.streamScreen}
+      style={{ "--detail-backdrop": backdrop ? `url("${backdrop}")` : "none" } as React.CSSProperties}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${item.name} streams`}
+    >
+      <div className={styles.detailLayout}>
+        <aside className={styles.detailPosterColumn}>
+          <div className={styles.detailPoster}>
+            {item.poster ? (
+              <Image src={item.poster} alt={`${item.name} poster`} fill unoptimized sizes="(max-width: 720px) 58vw, 438px" />
+            ) : (
+              <div className={styles.posterFallback}>{item.name}</div>
+            )}
+          </div>
+        </aside>
+
+        <section className={styles.detailContent}>
+          <div className={styles.detailTopline}>
+            <span className={styles.detailYear}>{getYear(item.releaseInfo)}</span>
             <button
-              onClick={toggleWatchlist}
+              type="button"
+              className={`${styles.watchlistButton} ${inWatchlist ? styles.watchlistButtonSaved : ""}`}
+              onClick={() => void toggleWatchlist()}
               disabled={watchlistLoading}
               aria-label={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
-              className={`flex items-center gap-1.5 rounded-lg border p-2 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 ${
-                inWatchlist
-                  ? "border-red-500/40 bg-red-500/10 text-red-400"
-                  : "border-white/8 bg-white/5 text-[#8e98ae] backdrop-blur-xl hover:border-white/15 hover:bg-white/8 hover:text-white"
-              }`}
+              title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
             >
-              <Bookmark className={`h-3.5 w-3.5 ${inWatchlist ? "fill-current" : ""}`} />
-              <span className="hidden sm:inline">{inWatchlist ? "Saved" : "Watchlist"}</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              aria-label="Close stream selector"
-              className="rounded-lg border border-transparent p-1.5 text-[#737c92] backdrop-blur-xl transition-colors hover:border-white/8 hover:bg-white/5 hover:text-white"
-            >
-              <X className="h-5 w-5" />
+              <Bookmark size={15} fill={inWatchlist ? "currentColor" : "none"} />
             </button>
           </div>
-        </div>
-        {watchlistError && (
-          <div className="border-b border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400 sm:px-6">
-            {watchlistError}
-          </div>
-        )}
 
-        {/* Media Details Banner */}
-        <div className="flex gap-3 border-b border-white/8 bg-white/3 p-3 backdrop-blur-xl sm:gap-4 sm:p-6">
-          {item.poster && (
-            <div className="relative h-32 w-[5.33rem] shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_30px_rgba(0,0,0,.25)] backdrop-blur-xl sm:h-36 sm:w-24">
-              <Image src={item.poster} alt={item.name} fill className="object-cover" unoptimized />
-            </div>
-          )}
-          <div className="flex min-w-0 flex-1 flex-col justify-between">
-            <p className="line-clamp-3 text-xs leading-relaxed text-[#9aa2b5] sm:line-clamp-4">
-              {item.description || "No synopsis available."}
-            </p>
+          <h1 className={styles.detailTitle}>{item.name}</h1>
+
+          <div className={styles.detailMeta}>
+            <span>{item.type === "series" ? "Series" : "Movie"}</span>
             {item.genre && item.genre.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {item.genre.map((g) => (
-                  <span
-                    key={g}
-                    className="rounded-lg border border-white/8 bg-white/5 px-2 py-0.5 text-[11px] text-[#8d97ab] backdrop-blur-xl"
-                  >
-                    {g}
-                  </span>
-                ))}
-              </div>
+              <span className={styles.detailGenre}>{item.genre.slice(0, 3).join(" | ")}</span>
             )}
           </div>
-        </div>
 
-        {/* TV Series Season / Episode Selector */}
-        {item.type === "series" && (
-          <div className="border-b border-white/8 bg-white/3 px-3 py-3 backdrop-blur-xl sm:px-6">
-            {seriesLoading ? (
-              <div className="flex items-center gap-2 text-xs text-[#737c92]">
-                <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                Loading seasons and episodes...
+          {watchlistError && <p className={styles.seriesError}>{watchlistError}</p>}
+
+          {isSeries && (
+            <>
+              {effectiveSeriesLoading ? (
+                <div className={styles.seriesError}>Loading seasons and episodes…</div>
+              ) : (
+                <div className={styles.seriesControls}>
+                  <select
+                    className={styles.seriesSelect}
+                    value={season}
+                    onChange={handleSeasonChange}
+                    aria-label="Select season"
+                  >
+                    {selectableSeasons.length > 0
+                      ? selectableSeasons.map((entry) => (
+                          <option key={entry.seasonNumber} value={entry.seasonNumber}>
+                            {entry.name}
+                          </option>
+                        ))
+                      : Array.from({ length: 50 }, (_, index) => index + 1).map((entry) => (
+                          <option key={entry} value={entry}>Season {entry}</option>
+                        ))}
+                  </select>
+                  <select
+                    className={styles.seriesSelect}
+                    value={episode}
+                    onChange={(event) => setEpisode(Number(event.target.value))}
+                    aria-label="Select episode"
+                  >
+                    {episodesForSeason.length > 0
+                      ? episodesForSeason.map((entry) => (
+                          <option key={entry.episodeNumber} value={entry.episodeNumber}>
+                            Episode {entry.episodeNumber}: {entry.name}
+                          </option>
+                        ))
+                      : Array.from({ length: 100 }, (_, index) => index + 1).map((entry) => (
+                          <option key={entry} value={entry}>Episode {entry}</option>
+                        ))}
+                  </select>
+                </div>
+              )}
+              {effectiveSeriesError && <p className={styles.seriesError}>{effectiveSeriesError} Manual selection is available.</p>}
+            </>
+          )}
+
+          <div className={styles.qualityRow} aria-label="Filter stream quality">
+            {QUALITY_FILTERS.map((quality) => (
+              <button
+                key={quality}
+                type="button"
+                className={`${styles.qualityButton} ${selectedQuality === quality ? styles.qualityButtonActive : ""}`}
+                onClick={() => setSelectedQuality(selectedQuality === quality ? null : quality)}
+                aria-pressed={selectedQuality === quality}
+              >
+                {quality}
+              </button>
+            ))}
+          </div>
+
+          <section className={styles.streamsSection} aria-label="Available torrent streams">
+            <div className={styles.streamSectionLabel}>
+              <span>Available streams</span>
+              {!loading && !error && <span>{filteredStreams.length} found</span>}
+            </div>
+
+            {loading ? (
+              <div className={styles.streamMessage}>
+                <Loader2 className="animate-spin" size={24} />
+                <span>Fetching torrent streams from MagnetIO…</span>
+              </div>
+            ) : error ? (
+              <div className={`${styles.streamMessage} ${styles.streamMessageError}`}>
+                <AlertCircle size={22} />
+                <span>{error}</span>
+              </div>
+            ) : streams.length === 0 ? (
+              <div className={styles.streamMessage}>No active torrent streams found for this title.</div>
+            ) : filteredStreams.length === 0 ? (
+              <div className={styles.streamMessage}>
+                No streams over 50 seeders match this quality. Select another quality or clear the filter.
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                {seriesError && (
-                  <div className="flex items-center gap-2 text-xs text-amber-400">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>{seriesError} Using manual season and episode selection.</span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Season Selector */}
-                  <div className="flex flex-col gap-1.5">
-                    <select
-                      id="season-select"
-                      value={season}
-                      onChange={handleSeasonChange}
-                      className="w-full cursor-pointer appearance-none rounded-lg border border-white/8 bg-white/5 px-3 py-2.5 text-sm text-white backdrop-blur-xl transition outline-none hover:border-white/15 hover:bg-white/7 focus:border-red-500/50"
-                    >
-                      {selectableSeasons.length > 0
-                        ? selectableSeasons.map((s) => (
-                            <option key={s.seasonNumber} value={s.seasonNumber}>
-                              {s.name}
-                            </option>
-                          ))
-                        : Array.from({ length: 50 }, (_, i) => i + 1).map((s) => (
-                            <option key={s} value={s}>
-                              Season {s}
-                            </option>
-                          ))}
-                    </select>
-                  </div>
-
-                  {/* Episode Selector */}
-                  <div className="flex flex-col gap-1.5">
-                    <select
-                      id="episode-select"
-                      value={episode}
-                      onChange={(e) => setEpisode(Number(e.target.value))}
-                      className="w-full cursor-pointer appearance-none rounded-lg border border-white/8 bg-white/5 px-3 py-2.5 text-sm text-white backdrop-blur-xl transition outline-none hover:border-white/15 hover:bg-white/7 focus:border-red-500/50"
-                    >
-                      {episodesForSeason.length > 0
-                        ? episodesForSeason.map((ep) => (
-                            <option key={ep.episodeNumber} value={ep.episodeNumber}>
-                              Episode {ep.episodeNumber} : {ep.name}
-                            </option>
-                          ))
-                        : Array.from({ length: 100 }, (_, i) => i + 1).map((ep) => (
-                            <option key={ep} value={ep}>
-                              Episode {ep}
-                            </option>
-                          ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Streams List */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xs font-semibold tracking-wider text-[#737c92] uppercase">
-              Available Streams {filteredStreams.length > 0 && `(${filteredStreams.length})`}
-            </h3>
-          </div>
-
-          {!loading && !error && streams.length > 0 && (
-            <div className="mb-4 grid grid-cols-4 overflow-hidden rounded-xl border border-white/8 bg-white/5 p-1 backdrop-blur-xl">
-              {qualityFilters.map((quality, index) => (
-                <button
-                  key={quality}
-                  type="button"
-                  aria-pressed={selectedQuality === quality}
-                  onClick={() => setSelectedQuality(selectedQuality === quality ? null : quality)}
-                  className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
-                    selectedQuality === quality
-                      ? "border border-red-400/10 bg-red-500/12 text-red-400 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]"
-                      : "border border-transparent text-[#8e98ae] hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  {quality}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-[#737c92]">
-              <Loader2 className="mb-3 h-7 w-7 animate-spin text-red-500" />
-              <p className="text-xs">Fetching torrent streams from backend...</p>
-            </div>
-          ) : error ? (
-            <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-400">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              <p>{error}</p>
-            </div>
-          ) : streams.length === 0 ? (
-            <div className="py-12 text-center text-xs text-[#737c92]">
-              No active torrent streams found for this title.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {filteredStreams.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#737c92]">
-                  No streams with more than 50 seeders are available in this quality.
-                </div>
-              ) : (
-                filteredStreams.map(({ stream, index, info }) => (
-                  <div
-                    key={stream.infoHash + index}
-                    onClick={() =>
-                      onPlayStream(stream, `${item.name} (${info.quality})`, {
-                        mediaId: item.id,
-                        title: item.name,
-                        mediaType: item.type,
-                        seasonNum: item.type === "series" ? season : undefined,
-                        episodeNum: item.type === "series" ? episode : undefined,
-                        posterUrl: item.poster,
-                      })
+              filteredStreams.map(({ stream, index, info }) => (
+                <article
+                  className={styles.streamCard}
+                  key={`${stream.infoHash}-${index}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => playStream(stream, info)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      playStream(stream, info);
                     }
-                    className="group flex cursor-pointer flex-col items-stretch gap-3 rounded-xl border border-white/8 bg-white/5 p-3 shadow-[0_8px_24px_rgba(0,0,0,.12),inset_0_1px_0_rgba(255,255,255,.025)] backdrop-blur-xl transition-all hover:-translate-y-px hover:border-white/15 hover:bg-white/7 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3.5"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-xs font-medium text-[#dce0ea] transition-colors group-hover:text-red-400">
-                        {info.rawTitle}
-                      </span>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6b758b]">
-                        {info.size !== "—" && (
-                          <span className="flex items-center gap-1">
-                            <HardDrive className="h-3 w-3" />
-                            {info.size}
-                          </span>
-                        )}
-                        {info.seeders !== "—" && (
-                          <span className="flex items-center gap-1 text-emerald-400">
-                            <Users className="h-3 w-3" />
-                            {info.seeders} seeds
-                          </span>
-                        )}
-                        <span className="rounded-md border border-white/6 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] font-medium text-[#8d97ab] backdrop-blur-sm">
-                          {info.provider}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
-                      <button
-                        type="button"
-                        title="Copy magnet link"
-                        aria-label="Copy magnet link"
-                        onClick={(e) => handleCopyMagnet(stream.magnet, index, e)}
-                        className="rounded-lg border border-white/6 bg-white/3 p-2 text-[#7e889e] backdrop-blur-xl transition-colors hover:border-white/12 hover:bg-white/8 hover:text-white"
-                      >
-                        {copiedIndex === index ? (
-                          <Check className="h-4 w-4 text-emerald-400" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all group-hover:bg-red-500"
-                      >
-                        <Play className="h-3.5 w-3.5 fill-current" />
-                        Play
-                      </button>
+                  }}
+                >
+                  <div className={styles.streamDescription}>
+                    <span className={styles.streamTitle} title={info.rawTitle}>{info.rawTitle}</span>
+                    <div className={styles.streamMeta}>
+                      {info.size !== "—" && (
+                        <span><HardDrive size={13} /> {info.size}</span>
+                      )}
+                      {info.seeders !== "—" && (
+                        <span><Users size={13} /> {info.seeders} seeders</span>
+                      )}
+                      <span className={styles.providerTag}>{info.provider}</span>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+
+                  <div className={styles.streamActions}>
+                    <button
+                      type="button"
+                      className={styles.copyButton}
+                      title="Copy magnet link"
+                      aria-label="Copy magnet link"
+                      onClick={(event) => void handleCopyMagnet(stream.magnet, index, event)}
+                    >
+                      {copiedIndex === index ? <Check size={18} /> : <Copy size={18} />}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.playButton}
+                      title="Play this stream"
+                      aria-label="Play this stream"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        playStream(stream, info);
+                      }}
+                    >
+                      <Play size={18} />
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </section>
+        </section>
       </div>
     </div>
   );

@@ -46,8 +46,6 @@ export function parseStreamTitle(title: string): ParsedStreamInfo {
     quality = "1080p";
   } else if (header.includes("720p")) {
     quality = "720p";
-  } else if (header.includes("480p") || header.includes("SD")) {
-    quality = "480p";
   }
 
   // Extract seeders and size
@@ -91,4 +89,36 @@ export interface SeriesDetails {
   totalSeasons: number;
   totalEpisodes: number;
   seasons: SeriesSeason[];
+}
+
+export interface WatchlistItem {
+  id?: string;
+  mediaId: string;
+  title: string;
+  mediaType: "movie" | "series";
+  posterUrl?: string | null;
+  releaseInfo?: string | null;
+  addedAt?: string;
+}
+
+export interface WatchHistoryItem {
+  id: string;
+  mediaId: string;
+  title: string;
+  mediaType: "movie" | "series";
+  posterUrl?: string | null;
+  currentTime: number;
+  duration: number;
+  completed?: boolean;
+  seasonNum?: number | null;
+  episodeNum?: number | null;
+}
+
+export interface PlaybackMediaInfo {
+  mediaId: string;
+  title: string;
+  mediaType: string;
+  seasonNum?: number;
+  episodeNum?: number;
+  posterUrl?: string;
 }

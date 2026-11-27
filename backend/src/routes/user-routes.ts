@@ -16,7 +16,7 @@ userRoutes.get("/profile", async (c) => {
       include: { settings: true },
     });
     return c.json({ user: dbUser || user });
-  } catch (err) {
+  } catch {
     return c.json({ user });
   }
 });
@@ -31,7 +31,7 @@ userRoutes.get("/history", async (c) => {
       take: 50,
     });
     return c.json({ history });
-  } catch (err) {
+  } catch {
     return c.json({ error: "Failed to fetch watch history" }, 500);
   }
 });
@@ -58,36 +58,38 @@ userRoutes.post("/history", async (c) => {
   }
 
   try {
-    const entry = await prisma.watchHistory.upsert({
+    const normalizedSeason = seasonNum !== null ? Number(seasonNum) : null;
+    const normalizedEpisode = episodeNum !== null ? Number(episodeNum) : null;
+    const progress = {
+      currentTime: Number(currentTime),
+      duration: Number(duration),
+      completed: Boolean(completed),
+      posterUrl,
+      title,
+    };
+    const existing = await prisma.watchHistory.findFirst({
       where: {
-        userId_mediaId_seasonNum_episodeNum: {
-          userId: user.id,
-          mediaId: String(mediaId),
-          seasonNum: seasonNum !== null ? Number(seasonNum) : (null as any),
-          episodeNum: episodeNum !== null ? Number(episodeNum) : (null as any),
-        },
-      },
-      update: {
-        currentTime: Number(currentTime),
-        duration: Number(duration),
-        completed: Boolean(completed),
-        posterUrl,
-        title,
-        updatedAt: new Date(),
-      },
-      create: {
         userId: user.id,
         mediaId: String(mediaId),
-        title,
-        mediaType,
-        seasonNum: seasonNum !== null ? Number(seasonNum) : null,
-        episodeNum: episodeNum !== null ? Number(episodeNum) : null,
-        currentTime: Number(currentTime),
-        duration: Number(duration),
-        completed: Boolean(completed),
-        posterUrl,
+        seasonNum: normalizedSeason,
+        episodeNum: normalizedEpisode,
       },
     });
+    const entry = existing
+      ? await prisma.watchHistory.update({
+          where: { id: existing.id },
+          data: { ...progress, updatedAt: new Date() },
+        })
+      : await prisma.watchHistory.create({
+          data: {
+            userId: user.id,
+            mediaId: String(mediaId),
+            ...progress,
+            mediaType,
+            seasonNum: normalizedSeason,
+            episodeNum: normalizedEpisode,
+          },
+        });
 
     return c.json({ success: true, entry });
   } catch (err) {
@@ -105,7 +107,7 @@ userRoutes.get("/watchlist", async (c) => {
       orderBy: { addedAt: "desc" },
     });
     return c.json({ watchlist });
-  } catch (err) {
+  } catch {
     return c.json({ error: "Failed to fetch watchlist" }, 500);
   }
 });
@@ -164,7 +166,7 @@ userRoutes.delete("/watchlist/:mediaId", async (c) => {
       },
     });
     return c.json({ success: true, removed: mediaId });
-  } catch (err) {
+  } catch {
     return c.json({ error: "Failed to remove from watchlist" }, 500);
   }
 });

@@ -1,170 +1,303 @@
 "use client";
 
-import React, { useRef, useState, useEffect, use } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { MediaItem, TorrentStream } from "@/types";
+import type { MediaItem, PlaybackMediaInfo, TorrentStream, WatchHistoryItem, WatchlistItem } from "@/types";
 import {
-  fetchPopularMedia,
-  searchMedia,
-  fetchWatchlist,
-  fetchWatchHistory,
   addToWatchlist,
+  fetchPopularMedia,
+  fetchWatchHistory,
+  fetchWatchlist,
   removeFromWatchlist,
+  searchMedia,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Navbar, NavTab } from "@/components/Navbar";
-import { MediaCard } from "@/components/MediaCard";
+import { Navbar, type NavTab } from "@/components/Navbar";
 import { StreamSelectorModal } from "@/components/StreamSelectorModal";
 import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import { DirectStreamModal } from "@/components/DirectStreamModal";
 import { AuthModal } from "@/components/AuthModal";
-import { useTabChange, useEscapeKey } from "@/hooks/KeyBoardControls";
-import { Loader2, Film, Tv, Sparkles, Bookmark, History, Play, Clock } from "lucide-react";
+import { useEscapeKey, useTabChange } from "@/hooks/KeyBoardControls";
+import { Bookmark, Clock, Film, History, Loader2, Play, Sparkles, X } from "lucide-react";
+import styles from "./home.module.css";
+
+function mapWatchlistItems(list: WatchlistItem[]): MediaItem[] {
+  return list.map((item) => ({
+    id: String(item.mediaId),
+    imdb_id: String(item.mediaId),
+    type: item.mediaType === "series" ? "series" : "movie",
+    name: item.title,
+    poster: item.posterUrl ?? undefined,
+    releaseInfo: item.releaseInfo ?? undefined,
+  }));
+}
+
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+function getYear(value?: string): string {
+  if (!value) return "";
+  const match = value.match(/\b(19|20)\d{2}\b/);
+  return match?.[0] ?? value;
+}
 
 export default function HomePage() {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTab>("movie");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [items, setItems] = useState<MediaItem[]>([]);
-  const [historyItems, setHistoryItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [historyItems, setHistoryItems] = useState<WatchHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
   const [watchlistIds, setWatchlistIds] = useState<Set<string>>(new Set());
+  const effectiveWatchlistIds = token ? watchlistIds : new Set<string>();
   const [watchlistBusyId, setWatchlistBusyId] = useState<string | null>(null);
+  const [featuredId, setFeaturedId] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const homeStageRef = useRef<HTMLElement | null>(null);
+  const nextSkipRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const feedGenerationRef = useRef(0);
 
-  // Modals state
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [activeStream, setActiveStream] = useState<{
     stream: TorrentStream;
     title: string;
-    mediaInfo?: any;
+    mediaInfo?: PlaybackMediaInfo;
   } | null>(null);
-  const [showDirectStream, setShowDirectStream] = useState<boolean>(false);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showDirectStream, setShowDirectStream] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleTabChange = (tab: NavTab) => {
+    setSelectedItem(null);
+    setActiveTab(tab);
+    setSearchQuery("");
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
 
   useEscapeKey(() => {
-    setShowDirectStream(false);
-    setSelectedItem(null);
-    setActiveStream(null);
-    setShowAuthModal(false);
-  });
-
-  useTabChange((key) => {
-    switch (key) {
-      case "m":
-        setActiveTab("movie");
-        break;
-      case "s":
-        setActiveTab("series");
-        break;
-      case "d":
-        setShowDirectStream(true);
-        break;
-    }
-  });
-
-  useTabChange((key) => {
-    switch (key) {
-      case "w":
-        setActiveTab("watchlist");
-        break;
-      case "h":
-        setActiveTab("history");
-        break;
-    }
-  }, !!token);
-
-  const mapWatchlistItems = (list: any[]): MediaItem[] =>
-    list.map((item: any) => ({
-      id: item.mediaId,
-      imdb_id: item.mediaId,
-      type: item.mediaType === "series" ? "series" : "movie",
-      name: item.title,
-      poster: item.posterUrl,
-      releaseInfo: item.releaseInfo,
-    }));
-
-  useEffect(() => {
-    if (!token) {
-      setWatchlistIds(new Set());
+    if (activeStream) {
+      setActiveStream(null);
       return;
     }
+    if (showAuthModal) {
+      setShowAuthModal(false);
+      return;
+    }
+    if (showDirectStream) {
+      setShowDirectStream(false);
+      return;
+    }
+    if (selectedItem) {
+      setSelectedItem(null);
+    }
+  });
+
+  useTabChange((key) => {
+    if (key === "m") handleTabChange("movie");
+    if (key === "s") handleTabChange("series");
+    if (key === "d") setShowDirectStream(true);
+  });
+
+  useTabChange((key) => {
+    if (key === "w") handleTabChange("watchlist");
+    if (key === "h") handleTabChange("history");
+  }, !!token);
+
+  useEffect(() => {
+    if (!token) return;
+
     fetchWatchlist(token)
-      .then((list) => setWatchlistIds(new Set(list.map((item: any) => String(item.mediaId)))))
-      .catch((err) => console.error("Error loading watchlist ids:", err));
+      .then((list) => setWatchlistIds(new Set(list.map((item) => String(item.mediaId)))))
+      .catch((error) => console.error("Error loading watchlist ids:", error));
   }, [token]);
 
   useEffect(() => {
     let isCurrent = true;
-    setLoading(true);
+    feedGenerationRef.current += 1;
 
-    const loadData = async () => {
+    void (async () => {
+      setLoading(true);
+      setItems([]);
+      setHasMore(false);
+      setFeaturedId(null);
+      nextSkipRef.current = 0;
+      loadingMoreRef.current = false;
+
       try {
         if (searchQuery.trim()) {
-          const type = activeTab === "movie" ? "movie" : "series";
+          const type = activeTab === "series" ? "series" : "movie";
           const results = await searchMedia(searchQuery, type);
-          if (isCurrent) setItems(results);
-        } else if (activeTab === "watchlist") {
-          if (token) {
-            const list = await fetchWatchlist(token);
-            if (isCurrent) {
-              setItems(mapWatchlistItems(list));
-              setWatchlistIds(new Set(list.map((item: any) => String(item.mediaId))));
-            }
-          } else {
-            if (isCurrent) setItems([]);
+          if (isCurrent) {
+            setItems(results);
+            setFeaturedId(results[0]?.id ?? null);
           }
-        } else if (activeTab === "history") {
-          if (token) {
-            const hist = await fetchWatchHistory(token);
-            if (isCurrent) setHistoryItems(hist);
-          } else {
-            if (isCurrent) setHistoryItems([]);
-          }
-        } else {
-          const popular = await fetchPopularMedia(activeTab);
-          if (isCurrent) setItems(popular);
+          return;
         }
-      } catch (err) {
-        console.error("Error loading media:", err);
+
+        if (activeTab === "watchlist") {
+          if (!token) {
+            if (isCurrent) setItems([]);
+            return;
+          }
+
+          const list = await fetchWatchlist(token);
+          if (isCurrent) {
+            const mapped = mapWatchlistItems(list);
+            setItems(mapped);
+            setWatchlistIds(new Set(list.map((item) => String(item.mediaId))));
+            setFeaturedId(mapped[0]?.id ?? null);
+          }
+          return;
+        }
+
+        if (activeTab === "history") {
+          if (!token) {
+            if (isCurrent) setHistoryItems([]);
+            return;
+          }
+
+          const history = await fetchWatchHistory(token);
+          if (isCurrent) setHistoryItems(history);
+          return;
+        }
+
+        const page = await fetchPopularMedia(activeTab, 0);
+
+        if (isCurrent) {
+          setItems(page.items);
+          setFeaturedId(page.items[0]?.id ?? null);
+          setHasMore(page.hasMore);
+          nextSkipRef.current = page.items.length;
+        }
+      } catch (error) {
+        console.error("Error loading media:", error);
+        if (isCurrent) {
+          setItems([]);
+          setHasMore(false);
+          if (activeTab === "history") setHistoryItems([]);
+        }
       } finally {
         if (isCurrent) setLoading(false);
       }
-    };
-
-    loadData();
+    })();
 
     return () => {
       isCurrent = false;
+      feedGenerationRef.current += 1;
     };
   }, [activeTab, searchQuery, token]);
 
-  const handleTabChange = (tab: NavTab) => {
-    setActiveTab(tab);
-    setSearchQuery("");
-  };
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || loading || !hasMore || searchQuery.trim() || items.length === 0) return;
+    if (activeTab !== "movie" && activeTab !== "series") return;
+
+    const generation = feedGenerationRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting || loadingMoreRef.current) return;
+
+        loadingMoreRef.current = true;
+        void (async () => {
+          try {
+            const catalogType = activeTab === "series" ? "series" : "movie";
+            const page = await fetchPopularMedia(catalogType, nextSkipRef.current);
+            if (generation !== feedGenerationRef.current) return;
+
+            setItems((current) => {
+              const seen = new Set(current.map((item) => item.id));
+              const unique = page.items.filter((item) => {
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return true;
+              });
+              return unique.length > 0 ? [...current, ...unique] : current;
+            });
+            nextSkipRef.current += page.items.length;
+            setHasMore(page.hasMore && page.items.length > 0);
+          } catch (error) {
+            console.error("Error loading more media:", error);
+            if (generation === feedGenerationRef.current) setHasMore(false);
+          } finally {
+            loadingMoreRef.current = false;
+          }
+        })();
+      },
+      { rootMargin: "600px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeTab, hasMore, items.length, loading, searchQuery]);
+
+  useEffect(() => {
+    const stage = homeStageRef.current;
+    if (!stage) return;
+
+    let frame = 0;
+    let hidden = false;
+
+    const update = () => {
+      frame = 0;
+      const fadeDistance = Math.max(1, window.innerHeight * 0.8);
+      const scrollY = Math.max(0, window.scrollY);
+      const progress = Math.min(scrollY / fadeDistance, 1);
+      const nextHidden = progress >= 1;
+
+      if (nextHidden !== hidden) {
+        hidden = nextHidden;
+        stage.dataset.heroHidden = String(hidden);
+      }
+
+      if (hidden) return;
+
+      stage.style.setProperty("--hero-progress", progress.toFixed(3));
+      stage.style.setProperty("--hero-offset", `${(scrollY * 0.42).toFixed(1)}px`);
+    };
+
+    const requestUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [activeTab, searchQuery, loading, featuredId]);
 
   const handleToggleWatchlist = async (item: MediaItem): Promise<boolean> => {
     if (!token) {
       setShowAuthModal(true);
       return false;
     }
-    if (!item.id || !item.name) {
-      console.error("Watchlist item is missing id or title");
-      return false;
-    }
+    if (!item.id || !item.name) return false;
 
     const alreadySaved = watchlistIds.has(item.id);
     setWatchlistBusyId(item.id);
+
     try {
       if (alreadySaved) {
         await removeFromWatchlist(token, item.id);
-        setWatchlistIds((prev) => {
-          const next = new Set(prev);
+        setWatchlistIds((previous) => {
+          const next = new Set(previous);
           next.delete(item.id);
           return next;
         });
         if (activeTab === "watchlist") {
-          setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+          setItems((previous) => previous.filter((entry) => entry.id !== item.id));
         }
       } else {
         await addToWatchlist(token, {
@@ -174,168 +307,236 @@ export default function HomePage() {
           posterUrl: item.poster,
           releaseInfo: item.releaseInfo,
         });
-        setWatchlistIds((prev) => new Set(prev).add(item.id));
-        if (activeTab === "watchlist") {
-          setItems((prev) => (prev.some((entry) => entry.id === item.id) ? prev : [item, ...prev]));
-        }
+        setWatchlistIds((previous) => new Set(previous).add(item.id));
       }
       return true;
-    } catch (err) {
-      console.error("Watchlist toggle failed:", err);
-      throw err;
+    } catch (error) {
+      console.error("Watchlist update failed:", error);
+      throw error;
     } finally {
       setWatchlistBusyId(null);
     }
   };
 
-  const handlePlayStream = (stream: TorrentStream, title: string, mediaInfo?: any) => {
+  const handlePlayStream = (
+    stream: TorrentStream,
+    title: string,
+    mediaInfo?: PlaybackMediaInfo,
+  ) => {
     setSelectedItem(null);
     setActiveStream({ stream, title, mediaInfo });
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
+  const featured = items.find((item) => item.id === featuredId) ?? items[0] ?? null;
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#0b0c10] text-[#e6e8ec] before:pointer-events-none before:absolute before:top-24 before:-left-24 before:h-72 before:w-72 before:rounded-full before:bg-red-600/5 before:blur-[100px] after:pointer-events-none after:absolute after:right-0 after:bottom-32 after:h-96 after:w-96 after:rounded-full after:bg-blue-500/4 after:blur-[120px]">
-      {/* Navbar */}
+    <div className={styles.appShell}>
       <Navbar
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        onSearch={setSearchQuery}
+        onSearch={handleSearch}
         onOpenDirectStream={() => setShowDirectStream(true)}
         onOpenAuth={() => setShowAuthModal(true)}
+        showMediaNav={!selectedItem}
       />
 
-      {/* Main Content Area */}
-      <main className="relative z-10 w-full flex-1 px-3 pt-4 pb-28 sm:px-4 lg:px-5 lg:pt-5">
-        {/* Content Grid / State */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-28 text-[#6e778d]">
-            <Loader2 className="mb-3 h-8 w-8 animate-spin text-red-500" />
-            <p className="text-xs font-medium">Loading content...</p>
+      {loading ? (
+        <main className={styles.loadingState}>
+          <Loader2 className={styles.loadingIcon} />
+          <span>Finding something worth watching…</span>
+        </main>
+      ) : activeTab === "history" ? (
+        <main className={styles.libraryPage}>
+          <div className={styles.libraryHeading}>
+            <span className={styles.eyebrow}>YOUR LIBRARY</span>
+            <h1>Continue watching</h1>
           </div>
-        ) : activeTab === "history" ? (
-          // Watch History View
-          historyItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/3 py-24 text-center backdrop-blur-xl">
-              <History className="mb-3 h-8 w-8 text-[#515a6e]" />
-              <p className="text-sm font-medium text-[#8d97ac]">No watch history yet</p>
-              <p className="mt-1 text-xs text-[#5f687e]">
-                Movies and shows you watch will appear here with your saved progress.
-              </p>
+          {historyItems.length === 0 ? (
+            <div className={styles.emptyState}>
+              <History size={28} />
+              <strong>No watch history yet</strong>
+              <span>Movies and shows you watch will appear here.</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {historyItems.map((hist) => {
-                const progressPct =
-                  hist.duration > 0 ? (hist.currentTime / hist.duration) * 100 : 0;
+            <div className={styles.historyGrid}>
+              {historyItems.map((entry) => {
+                const progress = entry.duration > 0 ? (entry.currentTime / entry.duration) * 100 : 0;
                 return (
-                  <div
-                    key={hist.id}
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={styles.historyCard}
                     onClick={() =>
                       setSelectedItem({
-                        id: hist.mediaId,
-                        name: hist.title,
-                        type: hist.mediaType,
-                        poster: hist.posterUrl,
+                        id: entry.mediaId,
+                        imdb_id: entry.mediaId,
+                        name: entry.title,
+                        type: entry.mediaType,
+                        poster: entry.posterUrl ?? undefined,
                       })
                     }
-                    className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-white/8 bg-white/5 p-3 shadow-[0_12px_32px_rgba(0,0,0,.16)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/7"
                   >
-                    <div className="flex gap-3">
-                      {hist.posterUrl && (
-                        <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded bg-[#161a26]">
-                          <Image
-                            src={hist.posterUrl}
-                            alt={hist.title}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
+                    <div className={styles.historyPoster}>
+                      {entry.posterUrl ? (
+                        <Image src={entry.posterUrl} alt={entry.title} fill unoptimized sizes="96px" />
+                      ) : (
+                        <Film size={26} />
                       )}
-                      <div className="flex min-w-0 flex-1 flex-col justify-between">
-                        <div>
-                          <span className="font-mono text-[10px] text-red-400 uppercase">
-                            {hist.mediaType}{" "}
-                            {hist.seasonNum ? `S${hist.seasonNum}:E${hist.episodeNum}` : ""}
-                          </span>
-                          <h3 className="line-clamp-2 text-xs font-semibold text-white transition-colors group-hover:text-red-400">
-                            {hist.title}
-                          </h3>
-                        </div>
-
-                        <div className="mt-2">
-                          <div className="mb-1 flex items-center justify-between text-[11px] text-[#6b758b]">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatTime(hist.currentTime)}
-                            </span>
-                            {hist.completed ? (
-                              <span className="text-emerald-400">Completed</span>
-                            ) : (
-                              <span>{Math.round(progressPct)}%</span>
-                            )}
-                          </div>
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#1e2537]">
-                            <div
-                              className="h-full bg-red-600 transition-all"
-                              style={{ width: `${Math.min(100, Math.max(5, progressPct))}%` }}
-                            />
-                          </div>
-                        </div>
+                    </div>
+                    <div className={styles.historyCardBody}>
+                      <span className={styles.historyType}>
+                        {entry.mediaType}
+                        {entry.seasonNum ? ` · S${entry.seasonNum}:E${entry.episodeNum}` : ""}
+                      </span>
+                      <strong>{entry.title}</strong>
+                      <div className={styles.progressMeta}>
+                        <span><Clock size={12} /> {formatTime(entry.currentTime)}</span>
+                        <span>{entry.completed ? "Completed" : `${Math.round(progress)}%`}</span>
+                      </div>
+                      <div className={styles.progressTrack}>
+                        <span style={{ width: `${Math.min(100, Math.max(4, progress))}%` }} />
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
-          )
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/3 py-24 text-center backdrop-blur-xl">
-            <Sparkles className="mb-3 h-8 w-8 text-[#515a6e]" />
-            <p className="text-sm font-medium text-[#8d97ac]">
-              {activeTab === "watchlist" ? "Your watchlist is empty" : "No results found"}
-            </p>
-            <p className="mt-1 text-xs text-[#5f687e]">
+          )}
+        </main>
+      ) : items.length === 0 || !featured ? (
+        <main className={styles.emptyPage}>
+          <div className={styles.emptyState}>
+            <Sparkles size={28} />
+            <strong>{activeTab === "watchlist" ? "Your watchlist is empty" : "Nothing found"}</strong>
+            <span>
               {activeTab === "watchlist"
-                ? "Click the bookmark icon on any movie or show to save it here."
-                : "Try searching by title or enter a specific IMDb ID (e.g. tt0133093)"}
-            </p>
+                ? "Save a title with the bookmark control and it will appear here."
+                : "Try another title or search with an IMDb ID."}
+            </span>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-8">
-            {items.map((item) => (
-              <MediaCard
-                key={item.id}
-                item={item}
-                inWatchlist={watchlistIds.has(item.id)}
-                watchlistBusy={watchlistBusyId === item.id}
-                onToggleWatchlist={handleToggleWatchlist}
-                onSelect={(selected) => setSelectedItem(selected)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+        </main>
+      ) : (
+        <main className={styles.homeStage} ref={homeStageRef}>
+          <div className={styles.heroSpacer} aria-hidden="true" />
+          <div
+            className={styles.heroBackdrop}
+            style={{ backgroundImage: `url("${featured.background || featured.poster || ""}")` }}
+            role="img"
+            aria-label={`${featured.name} backdrop`}
+          />
+          <div className={styles.heroAtmosphere} />
+          <div className={styles.heroShade} />
 
-      {/* Stream Selector Drawer/Modal */}
-      {selectedItem && (
-        <StreamSelectorModal
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-          inWatchlist={watchlistIds.has(selectedItem.id)}
-          onToggleWatchlist={handleToggleWatchlist}
-          onRequireAuth={() => setShowAuthModal(true)}
-          onPlayStream={handlePlayStream}
-        />
+          <section className={styles.heroCopy} aria-label="Featured title">
+            <span className={styles.heroYear}>{getYear(featured.releaseInfo)}</span>
+            <button
+              className={styles.heroTitleButton}
+              type="button"
+              onClick={() => setSelectedItem(featured)}
+              aria-label={`View streams for ${featured.name}`}
+            >
+              <h1>{featured.name}</h1>
+            </button>
+            <div className={styles.heroMeta}>
+              <span>{featured.genre?.slice(0, 3).join(" | ") || (featured.type === "series" ? "Series" : "Movie")}</span>
+              {searchQuery && <span className={styles.searchContext}>SEARCH RESULTS</span>}
+              {activeTab === "watchlist" && <span className={styles.searchContext}>YOUR WATCHLIST</span>}
+            </div>
+          </section>
+
+          <section className={styles.posterArea} aria-label="Browse titles">
+            <div className={styles.posterGrid}>
+              {items.map((item) => {
+                const isFeatured = item.id === featured.id;
+                const saved = effectiveWatchlistIds.has(item.id);
+                return (
+                  <article
+                    className={`${styles.posterCard} ${isFeatured ? styles.posterCardActive : ""}`}
+                    key={item.id}
+                    onMouseEnter={() => setFeaturedId(item.id)}
+                  >
+                    <button
+                      type="button"
+                      className={styles.posterSelect}
+                      onClick={() => setSelectedItem(item)}
+                      onFocus={() => setFeaturedId(item.id)}
+                      aria-label={`Open ${item.name} details`}
+                    >
+                      {item.poster ? (
+                        <Image
+                          src={item.poster}
+                          alt={item.name}
+                          fill
+                          unoptimized
+                          sizes="(max-width: 640px) 108px, (max-width: 1200px) 14vw, 170px"
+                        />
+                      ) : (
+                        <span className={styles.posterFallback}>{item.name}</span>
+                      )}
+                    </button>
+                    <div className={styles.posterHoverOverlay}>
+                      <button
+                        type="button"
+                        className={styles.posterPlayButton}
+                        title={`View streams for ${item.name}`}
+                        aria-label={`View streams for ${item.name}`}
+                        onClick={() => setSelectedItem(item)}
+                      >
+                        <Play size={18} fill="currentColor" />
+                      </button>
+                      <div className={styles.posterHoverInfo}>
+                        <strong className={styles.posterHoverName}>{item.name}</strong>
+                        <span className={styles.posterHoverYear}>
+                          {getYear(item.releaseInfo) || (item.type === "series" ? "Series" : "Movie")}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.posterActions}>
+                      <button
+                        type="button"
+                        title={saved ? "Remove from watchlist" : "Add to watchlist"}
+                        aria-label={saved ? "Remove from watchlist" : "Add to watchlist"}
+                        disabled={watchlistBusyId === item.id}
+                        onClick={() => void handleToggleWatchlist(item)}
+                      >
+                        <Bookmark size={14} fill={saved ? "currentColor" : "none"} />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            {hasMore && (
+              <div ref={loadMoreRef} className={styles.loadMoreSentinel} role="status">
+                <Loader2 className={styles.loadingIcon} />
+                <span>Loading more titles…</span>
+              </div>
+            )}
+          </section>
+        </main>
       )}
 
-      {/* Direct Stream Modal using Magnet Links */}
+      {selectedItem && (
+        <>
+          <StreamSelectorModal
+            item={selectedItem}
+              inWatchlist={effectiveWatchlistIds.has(selectedItem.id)}
+            onToggleWatchlist={handleToggleWatchlist}
+            onRequireAuth={() => setShowAuthModal(true)}
+            onPlayStream={handlePlayStream}
+          />
+          <button
+            type="button"
+            className={styles.closeStreamButton}
+            onClick={() => setSelectedItem(null)}
+            aria-label={`Close ${selectedItem.name} details`}
+            title="Close details"
+          >
+            <X size={18} />
+          </button>
+        </>
+      )}
+
       {showDirectStream && (
         <DirectStreamModal
           onClose={() => setShowDirectStream(false)}
@@ -343,10 +544,8 @@ export default function HomePage() {
         />
       )}
 
-      {/* Auth Modal */}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
 
-      {/* Fullscreen Video Player */}
       {activeStream && (
         <VideoPlayerModal
           stream={activeStream.stream}
@@ -355,6 +554,7 @@ export default function HomePage() {
           onClose={() => setActiveStream(null)}
         />
       )}
+
     </div>
   );
 }

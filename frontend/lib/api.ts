@@ -1,10 +1,31 @@
-import { MediaItem, SeriesDetails, SeriesSeason, TorrentStream } from "@/types";
+import {
+  MediaItem,
+  SeriesDetails,
+  SeriesSeason,
+  TorrentStream,
+  WatchHistoryItem,
+  WatchlistItem,
+} from "@/types";
 
 export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
 
 const CINEMETA_TOP_MOVIES = "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json";
 const CINEMETA_TOP_SERIES = "https://cinemeta-catalogs.strem.io/top/catalog/series/top.json";
 const CINEMETA_META_SERIES = "https://v3-cinemeta.strem.io/meta/series";
+
+interface CinemetaMeta {
+  id?: string;
+  imdb_id?: string;
+  type?: "movie" | "series" | string;
+  name: string;
+  poster?: string;
+  background?: string;
+  releaseInfo?: string;
+  year?: string;
+  description?: string;
+  genre?: string[];
+  cast?: string[];
+}
 
 interface CinemetaVideo {
   name?: string;
@@ -13,16 +34,34 @@ interface CinemetaVideo {
   episode?: number | string;
 }
 
-export async function fetchPopularMedia(type: "movie" | "series" = "movie"): Promise<MediaItem[]> {
-  const url = type === "movie" ? CINEMETA_TOP_MOVIES : CINEMETA_TOP_SERIES;
+export interface MediaCatalogPage {
+  items: MediaItem[];
+  hasMore: boolean;
+}
+
+function shuffleItems<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+export async function fetchPopularMedia(
+  type: "movie" | "series" = "movie",
+  skip = 0,
+): Promise<MediaCatalogPage> {
+  const baseUrl = type === "movie" ? CINEMETA_TOP_MOVIES : CINEMETA_TOP_SERIES;
+  const url = skip > 0 ? baseUrl.replace(/\.json$/, `/skip=${skip}.json`) : baseUrl;
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) throw new Error("Failed to fetch catalog");
     const data = await res.json();
-    return (data.metas || []).map((m: any) => ({
-      id: m.imdb_id || m.id,
+    const items = ((data.metas || []) as CinemetaMeta[]).map((m) => ({
+      id: m.imdb_id || m.id || "",
       imdb_id: m.imdb_id || m.id,
-      type: m.type || type,
+      type: (m.type === "series" ? "series" : "movie") as "movie" | "series",
       name: m.name,
       poster: m.poster,
       background: m.background,
@@ -31,9 +70,13 @@ export async function fetchPopularMedia(type: "movie" | "series" = "movie"): Pro
       genre: m.genre || [],
       cast: m.cast || [],
     }));
+    return {
+      items: skip === 0 ? shuffleItems(items) : items,
+      hasMore: Boolean(data.hasMore),
+    };
   } catch (error) {
     console.error("Error fetching popular media:", error);
-    return [];
+    return { items: [], hasMore: false };
   }
 }
 
@@ -80,10 +123,10 @@ export async function searchMedia(
     const res = await fetch(url);
     if (!res.ok) throw new Error("Search failed");
     const data = await res.json();
-    return (data.metas || []).map((m: any) => ({
-      id: m.imdb_id || m.id,
+    return ((data.metas || []) as CinemetaMeta[]).map((m) => ({
+      id: m.imdb_id || m.id || "",
       imdb_id: m.imdb_id || m.id,
-      type: m.type || type,
+      type: (m.type === "series" ? "series" : "movie") as "movie" | "series",
       name: m.name,
       poster: m.poster,
       background: m.background,
@@ -133,7 +176,7 @@ export function buildStreamUrl(infoHash: string, _magnet?: string, fileIdx?: num
 }
 
 // Authenticated User API calls
-export async function fetchWatchHistory(token: string) {
+export async function fetchWatchHistory(token: string): Promise<WatchHistoryItem[]> {
   const res = await fetch(`${BACKEND_URL}/user/history`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -141,7 +184,7 @@ export async function fetchWatchHistory(token: string) {
   });
   if (!res.ok) throw new Error("Failed to fetch watch history");
   const data = await res.json();
-  return data.history || [];
+  return (data.history || []) as WatchHistoryItem[];
 }
 
 export async function saveWatchProgress(
@@ -175,7 +218,7 @@ async function readApiError(res: Response, fallback: string): Promise<string> {
   return data.error || fallback;
 }
 
-export async function fetchWatchlist(token: string) {
+export async function fetchWatchlist(token: string): Promise<WatchlistItem[]> {
   const res = await fetch(`${BACKEND_URL}/user/watchlist`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -183,7 +226,7 @@ export async function fetchWatchlist(token: string) {
   });
   if (!res.ok) throw new Error(await readApiError(res, "Failed to fetch watchlist"));
   const data = await res.json();
-  return data.watchlist || [];
+  return (data.watchlist || []) as WatchlistItem[];
 }
 
 export async function addToWatchlist(
