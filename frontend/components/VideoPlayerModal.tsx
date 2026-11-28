@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { TorrentStream } from "@/types";
 import { buildStreamUrl, saveWatchProgress } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
+import { ExternalLink, AlertCircle, RefreshCw, X } from "lucide-react";
 
 interface MediaContextInfo {
   mediaId: string;
@@ -31,45 +31,41 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
 
   const streamUrl = buildStreamUrl(stream.infoHash, stream.magnet, stream.fileIdx);
 
-  // Sync watch progress to backend
-  const syncProgress = () => {
-    if (!token || !mediaInfo || !videoRef.current) return;
-    const currentTime = videoRef.current.currentTime;
-    const duration = videoRef.current.duration || 0;
-    if (currentTime > 0) {
-      saveWatchProgress(token, {
-        mediaId: mediaInfo.mediaId,
-        title: mediaInfo.title,
-        mediaType: mediaInfo.mediaType || "movie",
-        seasonNum: mediaInfo.seasonNum,
-        episodeNum: mediaInfo.episodeNum,
-        currentTime,
-        duration,
-        completed: duration > 0 && currentTime / duration > 0.9,
-        posterUrl: mediaInfo.posterUrl,
-      }).catch(() => {});
-    }
-  };
-
   useEffect(() => {
-    // Sync progress periodically every 15 seconds
-    const interval = setInterval(syncProgress, 15000);
-    return () => {
-      clearInterval(interval);
-      syncProgress();
+    const syncProgress = () => {
+      if (!token || !mediaInfo || !videoRef.current) return;
+      const currentTime = videoRef.current.currentTime;
+      const duration = videoRef.current.duration || 0;
+      if (currentTime > 0) {
+        saveWatchProgress(token, {
+          mediaId: mediaInfo.mediaId,
+          title: mediaInfo.title,
+          mediaType: mediaInfo.mediaType || "movie",
+          seasonNum: mediaInfo.seasonNum,
+          episodeNum: mediaInfo.episodeNum,
+          currentTime,
+          duration,
+          completed: duration > 0 && currentTime / duration > 0.9,
+          posterUrl: mediaInfo.posterUrl,
+        }).catch(() => {});
+      }
     };
-  }, [token, mediaInfo]);
 
-  useEffect(() => {
+    const interval = setInterval(syncProgress, 15000);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         syncProgress();
         onClose();
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("keydown", handleKeyDown);
+      syncProgress();
+    };
+  }, [onClose, token, mediaInfo]);
 
   const handleRetry = () => {
     setError(null);
@@ -81,15 +77,27 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+    <div
+      className="fixed inset-0 z-70 flex flex-col bg-black"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between border-b border-[#1f2434] bg-[#0c0e14] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
-          <h1 className="max-w-md truncate text-sm font-semibold text-white sm:max-w-xl">
-            {title}
-          </h1>
+      <div className="flex items-center justify-between border-b border-white/10 bg-[#0b0c10]/90 px-4 py-3 backdrop-blur-[18px] sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
+          <h1 className="truncate text-sm font-semibold text-white">{title}</h1>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close player"
+          title="Close player"
+          className="glass-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Video Viewport */}
@@ -117,12 +125,12 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
 
         {/* Buffering Indicator */}
         {isBuffering && !error && (
-          <div className="pointer-events-none absolute flex flex-col items-center justify-center rounded-xl border border-[#22293d] bg-black/75 px-6 py-4 backdrop-blur-sm">
+          <div className="pointer-events-none absolute flex flex-col items-center justify-center rounded-xl border border-white/10 bg-black/70 px-6 py-4 backdrop-blur-[14px]">
             <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
             <span className="text-xs font-medium text-white">
               Buffering torrent stream from peers...
             </span>
-            <span className="mt-1 text-[10px] text-[#788298]">
+            <span className="mt-1 text-[10px] text-[#b5bdce]">
               Initial piece download takes a few seconds
             </span>
           </div>
@@ -130,7 +138,7 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
 
         {/* Error Overlay */}
         {error && (
-          <div className="absolute max-w-md rounded-xl border border-red-500/30 bg-[#140b0e]/95 p-6 text-center backdrop-blur-md">
+          <div className="absolute max-w-md rounded-xl border border-red-500/30 bg-[#140b0e]/95 p-6 text-center">
             <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-400" />
             <h3 className="mb-1 text-sm font-semibold text-white">Playback Error</h3>
             <p className="mb-4 text-xs text-[#a87f87]">{error}</p>
@@ -146,7 +154,7 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
                 href={streamUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-[#3b232a] bg-[#221217] px-4 py-2 text-xs text-white hover:bg-[#2c171e]"
+                className="glass-button flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs text-white"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open in VLC / External Player

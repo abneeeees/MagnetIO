@@ -90,23 +90,31 @@ export function AuthModal({ onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05060a]/70 p-4 backdrop-blur-2xl">
-      <div className="relative w-full max-w-md overflow-hidden rounded-xl border border-white/10 bg-[#0f121a]/80 shadow-[0_24px_80px_rgba(0,0,0,.65),inset_0_1px_0_rgba(255,255,255,.04)] backdrop-blur-3xl">
+    <div
+      className="fixed inset-0 z-70 flex items-center justify-center bg-[#05060a]/55 p-4 backdrop-blur-[18px] sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={mode === "signin" ? "Sign in to MagnetIO" : "Create a MagnetIO account"}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="glass-panel relative w-full max-w-md overflow-hidden rounded-2xl shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/8 bg-white/4 px-6 py-4 backdrop-blur-2xl">
+        <div className="flex items-center justify-between border-b border-white/8 bg-white/4 px-6 py-4">
           <h2 className="text-sm font-semibold text-white">
-            {mode === "signin" ? "Sign In to Magnetio" : "Create an Account"}
+            {mode === "signin" ? "Sign In to MagnetIO" : "Create an Account"}
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg border border-transparent p-1 text-[#737c92] backdrop-blur-xl transition-colors hover:border-white/8 hover:bg-white/5 hover:text-white"
+            aria-label="Close sign in dialog"
+            className="glass-button rounded-lg p-1 text-[#c8cedb] hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-white/8 bg-white/3 backdrop-blur-xl">
+        <div className="flex border-b border-white/8 bg-white/3">
           <button
             onClick={() => {
               setMode("signin");
@@ -142,7 +150,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/5 py-2.5 text-xs font-medium text-white backdrop-blur-xl transition-colors hover:border-white/15 hover:bg-white/8 disabled:opacity-50"
+            className="glass-button flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-medium text-white disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -169,7 +177,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             type="button"
             onClick={handleGithubSignIn}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/5 py-2.5 text-xs font-medium text-white backdrop-blur-xl transition-colors hover:border-white/15 hover:bg-white/8 disabled:opacity-50"
+            className="glass-button flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-medium text-white disabled:opacity-50"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24">
               <path
@@ -182,7 +190,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
 
           <div className="relative flex items-center justify-center">
             <div className="w-full border-t border-[#1b202e]" />
-            <span className="absolute bg-[#0f121a]/80 px-2 text-[10px] tracking-wider text-[#5f687d] uppercase backdrop-blur-xl">
+            <span className="absolute bg-[#0f121a]/80 px-2 text-[10px] tracking-wider text-[#98a1b4] uppercase">
               or with email
             </span>
           </div>
@@ -190,54 +198,70 @@ export function AuthModal({ onClose }: AuthModalProps) {
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "signup" && (
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#8e97ab]">Name</label>
+                <label
+                  htmlFor="auth-name"
+                  className="mb-1 block text-xs font-medium text-[#8e97ab]"
+                >
+                  Name
+                </label>
                 <div className="relative">
-                  <UserIcon className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#5f687d]" />
+                  <UserIcon className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#98a1b4]" />
                   <input
+                    id="auth-name"
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
-                    className="w-full rounded-xl border border-white/8 bg-white/5 py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] backdrop-blur-xl focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:outline-none"
+                    className="glass-field w-full rounded-xl py-2 pr-3 pl-9 text-xs text-white placeholder-[#98a1b4]"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-[#8e97ab]">Email Address</label>
+              <label htmlFor="auth-email" className="mb-1 block text-xs font-medium text-[#8e97ab]">
+                Email Address
+              </label>
               <div className="relative">
-                <Mail className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#5f687d]" />
+                <Mail className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#98a1b4]" />
                 <input
+                  id="auth-email"
                   type="email"
+                  autoFocus
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full rounded-xl border border-white/8 bg-white/5 py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] backdrop-blur-xl focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:outline-none"
+                  className="glass-field w-full rounded-xl py-2 pr-3 pl-9 text-xs text-white placeholder-[#98a1b4]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-[#8e97ab]">Password</label>
+              <label
+                htmlFor="auth-password"
+                className="mb-1 block text-xs font-medium text-[#8e97ab]"
+              >
+                Password
+              </label>
               <div className="relative">
-                <Lock className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#5f687d]" />
+                <Lock className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#98a1b4]" />
                 <input
+                  id="auth-password"
                   type={showPassword ? "text" : "password"}
                   required
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-white/8 bg-white/5 py-2 pr-3 pl-9 text-xs text-white placeholder-[#5a6378] backdrop-blur-xl focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:outline-none"
+                  className="glass-field w-full rounded-xl py-2 pr-9 pl-9 text-xs text-white placeholder-[#98a1b4]"
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-slate-700 focus:outline-none"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#98a1b4] hover:text-white"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -246,14 +270,20 @@ export function AuthModal({ onClose }: AuthModalProps) {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-400">
+              <div
+                role="status"
+                className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-400"
+              >
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-400">
+              <div
+                role="status"
+                className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-400"
+              >
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{successMsg}</span>
               </div>
@@ -262,7 +292,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-600/85 py-2.5 text-xs font-semibold text-white shadow-[0_8px_24px_rgba(220,38,38,.14)] backdrop-blur-xl transition-colors hover:bg-red-500 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/20 bg-red-600/85 py-2.5 text-xs font-semibold text-white shadow-[0_8px_24px_rgba(220,38,38,.14)] transition-colors hover:bg-red-500 disabled:opacity-50"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {mode === "signin" ? "Sign In" : "Create Account"}

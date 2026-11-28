@@ -45,10 +45,17 @@ export function useTabChange(callback: (key: string) => void, enabled = true) {
     if (!enabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
       const key = e.key.toLowerCase();
       const target = e.target as HTMLElement;
 
-      if (["INPUT", "TEXTAREA"].includes(target.tagName) || target.isContentEditable) return;
+      if (
+        ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName) ||
+        target.isContentEditable
+      ) {
+        return;
+      }
 
       if (["m", "s", "w", "h", "d"].includes(key)) {
         callback(key);

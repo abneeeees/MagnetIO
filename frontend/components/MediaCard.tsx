@@ -25,7 +25,7 @@ export function MediaCard({
   return (
     <div
       onClick={() => onSelect(item)}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-white/8 bg-white/5 shadow-[0_12px_32px_rgba(0,0,0,.18),inset_0_1px_0_rgba(255,255,255,.025)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-white/15 hover:bg-white/7 hover:shadow-lg hover:shadow-black/50"
+      className="glass-panel group relative flex cursor-pointer flex-col overflow-hidden rounded-xl transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
     >
       {/* Poster Image */}
       <div className="relative aspect-2/3 w-full overflow-hidden bg-white/3">
@@ -47,7 +47,7 @@ export function MediaCard({
         )}
 
         {/* Hover Overlay with Play Button */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 backdrop-blur-[14px] transition-opacity duration-200 group-hover:opacity-100">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform duration-200 group-hover:scale-110">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
           </div>
@@ -62,7 +62,7 @@ export function MediaCard({
               e.stopPropagation();
               onToggleWatchlist(item);
             }}
-            className={`absolute top-2 left-2 z-10 rounded-md p-1.5 backdrop-blur-sm transition-colors ${
+            className={`absolute top-2 left-2 z-10 rounded-md p-1.5 backdrop-blur-[14px] transition-colors ${
               inWatchlist
                 ? "bg-red-600 text-white"
                 : "bg-black/70 text-[#c0c6d4] opacity-100 hover:text-white sm:opacity-0 sm:group-hover:opacity-100"
@@ -74,7 +74,7 @@ export function MediaCard({
 
         {/* Top Badges */}
         {item.genre && item.genre.length > 0 && (
-          <div className="absolute top-2 right-2 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-medium backdrop-blur-sm">
+          <div className="absolute top-2 right-2 rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-medium backdrop-blur-[14px]">
             {item.genre[0]}
           </div>
         )}
