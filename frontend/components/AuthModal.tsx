@@ -91,12 +91,13 @@ export function AuthModal({ onClose }: AuthModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05060a]/45 p-4 backdrop-blur-[18px]"
+      className="fixed inset-0 z-70 flex items-center justify-center bg-[#05060a]/55 p-4 backdrop-blur-[18px] sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={mode === "signin" ? "Sign in to MagnetIO" : "Create a MagnetIO account"}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="glass-panel relative w-full max-w-md overflow-hidden rounded-xl">
+      <div className="glass-panel relative w-full max-w-md overflow-hidden rounded-2xl shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/8 bg-white/4 px-6 py-4">
           <h2 className="text-sm font-semibold text-white">
@@ -197,7 +198,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "signup" && (
               <div>
-                <label htmlFor="auth-name" className="mb-1 block text-xs font-medium text-[#8e97ab]">Name</label>
+                <label
+                  htmlFor="auth-name"
+                  className="mb-1 block text-xs font-medium text-[#8e97ab]"
+                >
+                  Name
+                </label>
                 <div className="relative">
                   <UserIcon className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#98a1b4]" />
                   <input
@@ -214,7 +220,9 @@ export function AuthModal({ onClose }: AuthModalProps) {
             )}
 
             <div>
-              <label htmlFor="auth-email" className="mb-1 block text-xs font-medium text-[#8e97ab]">Email Address</label>
+              <label htmlFor="auth-email" className="mb-1 block text-xs font-medium text-[#8e97ab]">
+                Email Address
+              </label>
               <div className="relative">
                 <Mail className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#98a1b4]" />
                 <input
@@ -231,7 +239,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
             </div>
 
             <div>
-              <label htmlFor="auth-password" className="mb-1 block text-xs font-medium text-[#8e97ab]">Password</label>
+              <label
+                htmlFor="auth-password"
+                className="mb-1 block text-xs font-medium text-[#8e97ab]"
+              >
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[#98a1b4]" />
                 <input
@@ -257,14 +270,20 @@ export function AuthModal({ onClose }: AuthModalProps) {
             </div>
 
             {error && (
-              <div role="status" className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-400">
+              <div
+                role="status"
+                className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-400"
+              >
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
-              <div role="status" className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-400">
+              <div
+                role="status"
+                className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-400"
+              >
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{successMsg}</span>
               </div>

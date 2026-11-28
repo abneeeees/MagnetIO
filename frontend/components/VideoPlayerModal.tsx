@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { TorrentStream } from "@/types";
 import { buildStreamUrl, saveWatchProgress } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -77,21 +77,24 @@ export function VideoPlayerModal({ stream, title, mediaInfo, onClose }: VideoPla
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-black" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="fixed inset-0 z-70 flex flex-col bg-black"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-[#0b0c10]/90 px-4 py-3 backdrop-blur-[18px]">
-        <div className="flex items-center gap-3">
-          <span className="flex h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
-          <h1 className="max-w-md truncate text-sm font-semibold text-white sm:max-w-xl">
-            {title}
-          </h1>
+      <div className="flex items-center justify-between border-b border-white/10 bg-[#0b0c10]/90 px-4 py-3 backdrop-blur-[18px] sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-emerald-500" />
+          <h1 className="truncate text-sm font-semibold text-white">{title}</h1>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close player"
           title="Close player"
-          className="glass-button flex h-9 w-9 items-center justify-center rounded-full text-white"
+          className="glass-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
         >
           <X className="h-4 w-4" />
         </button>

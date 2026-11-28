@@ -48,12 +48,13 @@ export function DirectStreamModal({ onClose, onPlayStream }: DirectStreamModalPr
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05060a]/45 p-4 backdrop-blur-[18px]"
+      className="fixed inset-0 z-70 flex items-center justify-center bg-[#05060a]/55 p-4 backdrop-blur-[18px] sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label="Direct stream"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="glass-panel relative w-full max-w-lg overflow-hidden rounded-xl">
+      <div className="glass-panel relative w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/8 bg-white/4 px-6 py-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -73,13 +74,15 @@ export function DirectStreamModal({ onClose, onPlayStream }: DirectStreamModalPr
         {/* Form */}
         <form onSubmit={handleStartStream} className="space-y-4 p-6">
           <div>
-            <label htmlFor="direct-magnet" className="mb-1.5 block text-xs font-medium text-[#8e97ab]">
+            <label
+              htmlFor="direct-magnet"
+              className="mb-1.5 block text-xs font-medium text-[#8e97ab]"
+            >
               Magnet Link or 40-character InfoHash
             </label>
             <textarea
               id="direct-magnet"
               rows={3}
-              autoFocus
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
@@ -90,7 +93,11 @@ export function DirectStreamModal({ onClose, onPlayStream }: DirectStreamModalPr
             />
           </div>
 
-          {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-red-400">
+              {error}
+            </p>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button
